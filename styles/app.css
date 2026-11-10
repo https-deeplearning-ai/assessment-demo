@@ -641,6 +641,28 @@ body {
 .results-jump__link {
   font-size: 0.9rem;
 }
+.results-survey {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid #eee;
+  border-left: 4px solid var(--dl-coral);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+.results-survey__text {
+  margin: 0;
+  font-weight: 600;
+}
+.results-survey__frame {
+  width: 100%;
+  height: 900px;
+  max-height: 80vh;
+  border: 0;
+}
+.results-survey__link {
+  font-size: 0.9rem;
+}
 .results-challenge {
   display: flex;
   flex-direction: column;

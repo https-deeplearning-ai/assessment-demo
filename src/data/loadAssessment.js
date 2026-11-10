@@ -12,6 +12,8 @@
 //
 // This module does NO shuffling and NO grading — those live in later milestones.
 
+import { normalizePrefill } from "../survey.js";
+
 const POINTS_PER_QUESTION = 1; // SPEC §5
 
 const ALL_TYPES = new Set([
@@ -55,7 +57,14 @@ export function normalizeManifest(raw) {
     const file = str(e && e.file, `assessments[${i}].file`);
     if (seen.has(id)) throw new Error(`Duplicate assessment id "${id}" in manifest.`);
     seen.add(id);
-    return { id, title, file, description: typeof e.description === "string" ? e.description : "" };
+    return {
+      id,
+      title,
+      file,
+      description: typeof e.description === "string" ? e.description : "",
+      // Experiment arm ("A"/"B") recorded with results and the survey; "" if unset.
+      variant: typeof e.variant === "string" && /^[A-Za-z0-9_-]{1,32}$/.test(e.variant) ? e.variant : "",
+    };
   });
 }
 
@@ -101,6 +110,11 @@ export function normalizeAssessment(raw) {
     audience: raw.audience ?? "",
     estimated_duration: raw.estimated_duration ?? "",
     lead_scenario: raw.lead_scenario ?? "",
+    // Optional post-assessment survey link shown on the results screen. Only
+    // absolute http(s) URLs are accepted; anything else hides the survey block.
+    survey_url: httpUrl(raw.survey_url),
+    // Optional Google Form prefill: our field name -> the form's "entry.<n>" id.
+    survey_prefill: normalizePrefill(raw.survey_prefill),
   };
 
   const challenges = [];
@@ -319,6 +333,17 @@ function cyrb53(str, seed = 0) {
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   const n = 4294967296 * (2097151 & h2) + (h1 >>> 0);
   return n.toString(16).padStart(14, "0");
+}
+
+/** @returns {string} the URL if it's an absolute http(s) URL, else "" */
+function httpUrl(v) {
+  if (typeof v !== "string") return "";
+  try {
+    const u = new URL(v);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function str(v, what) {

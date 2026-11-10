@@ -8,6 +8,7 @@ import { focusHeading, announce } from "../util/a11y.js";
 import { widgetFor } from "../questions/registry.js";
 import { grade } from "../scoring.js";
 import { startFresh } from "../session.js";
+import { buildSurveyUrl } from "../survey.js";
 
 const OUTCOME = {
   correct: { shape: "✓", label: "Correct" },
@@ -28,6 +29,13 @@ export function renderResults(root, app) {
 
   const challenges = model.challenges.filter((ch) => ch.questions.length);
   section.append(reviewNav(challenges)); // jump to any challenge's review (SPEC §3.4)
+  const survey = surveyBlock(model.meta, {
+    uh: app.learnerId,
+    variant: app.assessment && app.assessment.variant,
+    score: fmt(r.totalEarned),
+    percentage: r.percentage,
+  }); // null when no survey configured
+  if (survey) section.append(survey);
   for (const ch of challenges) section.append(challengeBlock(ch, r, app));
 
   const actions = el("div", "actions");
@@ -44,6 +52,34 @@ export function renderResults(root, app) {
   focusHeading(h1);
   // Polite: this is a route landing, not a system event, and focus already reads the h1.
   announce(`Results: ${fmt(r.totalEarned)} of ${r.totalPossible} points, ${r.percentage} percent.`);
+}
+
+// Post-assessment survey, embedded (Google Form, prefilled with the learner id +
+// variant + score so responses join the results sheet), plus a new-tab fallback.
+function surveyBlock(meta, values) {
+  if (!meta.survey_url) return null;
+  const embedUrl = buildSurveyUrl(meta.survey_url, meta.survey_prefill, values, { embedded: true });
+  const url = buildSurveyUrl(meta.survey_url, meta.survey_prefill, values);
+  if (!url) return null;
+
+  const wrap = el("aside", "results-survey");
+  wrap.setAttribute("aria-label", "Survey");
+  wrap.append(
+    el("p", "results-survey__text", "One last step — please answer this 2-minute survey.")
+  );
+  const frame = el("iframe", "results-survey__frame");
+  frame.src = embedUrl;
+  frame.title = "Assessment survey";
+  frame.loading = "lazy";
+  wrap.append(frame);
+
+  const a = el("a", "results-survey__link", "Survey not loading? Open it in a new tab");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.append(el("span", "sr-only", " (opens in a new tab)"));
+  wrap.append(a);
+  return wrap;
 }
 
 // "Review by challenge" — anchor links to each challenge's review section (SPEC §3.4).

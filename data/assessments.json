@@ -9,12 +9,14 @@
     "id": "spec-driven-a",
     "title": "Spec-Driven Development — A",
     "description": "Variant A · 6 challenges",
-    "file": "data/spec-driven-development-assessment-A.json"
+    "file": "data/spec-driven-development-assessment-A.json",
+    "variant": "A"
   },
   {
     "id": "spec-driven-b",
     "title": "Spec-Driven Development — B",
     "description": "Variant B · 10 questions",
-    "file": "data/spec-driven-development-assessment-B.json"
+    "file": "data/spec-driven-development-assessment-B.json",
+    "variant": "B"
   }
 ]

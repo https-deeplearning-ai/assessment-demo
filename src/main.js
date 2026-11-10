@@ -12,6 +12,16 @@ import { renderInstructions } from "./screens/instructions.js";
 import { renderQuiz } from "./screens/quiz.js";
 import { renderResults } from "./screens/results.js";
 import { renderError } from "./screens/error.js";
+import { RESULTS_ENDPOINT } from "./config.js";
+import {
+  learnerIdFromUrl,
+  resolveLearnerId,
+  startAttempt,
+  currentAttempt,
+  buildStartedEvent,
+  buildSubmittedEvent,
+  sendEvent,
+} from "./telemetry.js";
 
 // Fallback when no manifest is present — keeps the app working with one file.
 const DEFAULT_ENTRY = {
@@ -23,6 +33,17 @@ const DEFAULT_ENTRY = {
 
 const root = document.getElementById("app");
 const app = createApp(render);
+
+// Experiment telemetry (see telemetry.js). Hooks read app.sessionKey at call
+// time, so they follow whichever assessment is open.
+app.learnerId = resolveLearnerId(globalThis.location.href);
+app.onStart = () => {
+  const attempt = startAttempt(app.sessionKey);
+  sendEvent(RESULTS_ENDPOINT, buildStartedEvent(app, attempt));
+};
+app.onSubmit = (results) => {
+  sendEvent(RESULTS_ENDPOINT, buildSubmittedEvent(app, results, currentAttempt(app.sessionKey)));
+};
 
 function render(a) {
   switch (a.screen) {
@@ -89,7 +110,11 @@ async function boot() {
 
     const chosen = entries.find((e) => e.id === urlParam());
     if (chosen) await openAssessment(chosen); // deep-linked
-    else if (entries.length === 1) await openAssessment(entries[0]); // nothing to pick
+    else if (learnerIdFromUrl(globalThis.location.href)) {
+      // Experiment link from the platform: never offer the picker (it would let
+      // a learner switch to the other variant).
+      throw new Error("This assessment link is incomplete. Please reopen it from the course page.");
+    } else if (entries.length === 1) await openAssessment(entries[0]); // nothing to pick
     else app.go(SCREENS.PICKER); // let the learner choose
   } catch (err) {
     console.error("[assessment] failed to boot:", err);
