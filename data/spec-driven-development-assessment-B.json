@@ -1,5 +1,7 @@
 {
   "capability_name": "Spec-Driven Development with Agentic Coding",
+  "survey_url": "https://docs.google.com/forms/d/e/1FAIpQLSfNBIxwA3Uh3icZ8tnA_cGDqCUZdqzwmxT8Y3OWGXkMhhgPow/viewform",
+  "survey_prefill": { "uh": "entry.414250295", "variant": "entry.404243219" },
   "status": "draft",
   "audience": "Beginners to spec-driven and agentic coding workflows",
   "estimated_duration": "25-30 minutes",

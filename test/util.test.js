@@ -218,7 +218,7 @@ test("normalizeManifest validates entries and rejects bad input", () => {
     { id: "b", title: "B", file: "data/b.json", description: "two" },
   ]);
   assert.equal(m.length, 2);
-  assert.deepEqual(m[0], { id: "a", title: "A", file: "data/a.json", description: "" });
+  assert.deepEqual(m[0], { id: "a", title: "A", file: "data/a.json", description: "", variant: "" });
   assert.equal(m[1].description, "two");
   assert.throws(() => normalizeManifest([]), /non-empty/);
   assert.throws(() => normalizeManifest([{ id: "a", title: "A" }]), /file/); // missing file

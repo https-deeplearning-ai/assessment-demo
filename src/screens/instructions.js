@@ -110,15 +110,31 @@ function actions(root, app) {
     const startOver = secondaryButton("Start over", () => {
       app.reset(); // clear in-memory answers/index/results
       app.setSessionSeed(startFresh(key)); // clear storage + mint a new seed
+      notifyStart(app);
       // assertive region so it isn't clobbered by the quiz's polite "Question 1…"
       announce("Progress cleared. Starting over.", { assertive: true });
       app.go(SCREENS.QUIZ);
     });
     wrap.append(resume, startOver);
   } else {
-    wrap.append(primaryButton("Start assessment", () => app.go(SCREENS.QUIZ)));
+    wrap.append(
+      primaryButton("Start assessment", () => {
+        notifyStart(app);
+        app.go(SCREENS.QUIZ);
+      })
+    );
   }
   return wrap;
+}
+
+// A fresh attempt begins (not on Resume); telemetry must never block the quiz.
+function notifyStart(app) {
+  if (!app.onStart) return;
+  try {
+    app.onStart();
+  } catch {
+    /* ignore */
+  }
 }
 
 function primaryButton(text, onClick) {

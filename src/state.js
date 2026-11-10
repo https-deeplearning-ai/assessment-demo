@@ -50,6 +50,10 @@ export function createApp(onChange) {
     results: null,
     /** @type {((app) => void)|null} persistence hook, set by main.js (SPEC §7) */
     persist: null,
+    /** @type {(() => void)|null} called when a fresh attempt starts (telemetry) */
+    onStart: null,
+    /** @type {((results) => void)|null} called once on submit (telemetry) */
+    onSubmit: null,
 
     /** Save in-quiz state through the persistence hook, if wired. */
     _save() {
@@ -138,6 +142,13 @@ export function createApp(onChange) {
       this.results = results;
       this.submitted = true;
       this._save(); // persist submitted so a reload returns to results (SPEC §7)
+      if (this.onSubmit) {
+        try {
+          this.onSubmit(results);
+        } catch {
+          /* telemetry must never block showing results */
+        }
+      }
       return this.go(SCREENS.RESULTS);
     },
     /** Clear in-quiz state for a fresh attempt (Retake). */
