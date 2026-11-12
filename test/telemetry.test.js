@@ -14,7 +14,14 @@ import {
   buildSubmittedEvent,
   sendEvent,
 } from "../src/telemetry.js";
-import { normalizePrefill, buildSurveyUrl } from "../src/survey.js";
+import {
+  normalizePrefill,
+  buildSurveyUrl,
+  normalizeQuestions,
+  formResponseUrl,
+  buildSurveyBody,
+  submitSurvey,
+} from "../src/survey.js";
 import { normalizeManifest } from "../src/data/loadAssessment.js";
 
 beforeEach(() => _resetForTests());
@@ -136,4 +143,51 @@ test("normalizeManifest passes through a safe variant", () => {
   ]);
   assert.equal(a.variant, "A");
   assert.equal(b.variant, "");
+});
+
+test("normalizeQuestions keeps valid scale/paragraph items only", () => {
+  const qs = normalizeQuestions([
+    { entry: "entry.1", type: "scale", title: "Hard?", min_label: "Easy", max_label: "Hard" },
+    { entry: "entry.2", type: "paragraph", title: "Why?" },
+    { entry: "bad", type: "scale", title: "x" },
+    { entry: "entry.3", type: "checkbox", title: "x" },
+    { entry: "entry.4", type: "paragraph", title: " " },
+    { entry: "entry.5", type: "scale", title: "x", min: 5, max: 1 },
+  ]);
+  assert.deepEqual(qs, [
+    { entry: "entry.1", type: "scale", title: "Hard?", min: 1, max: 5, min_label: "Easy", max_label: "Hard" },
+    { entry: "entry.2", type: "paragraph", title: "Why?" },
+  ]);
+  assert.deepEqual(normalizeQuestions(undefined), []);
+});
+
+test("formResponseUrl only maps Google Form viewform URLs", () => {
+  assert.equal(
+    formResponseUrl("https://docs.google.com/forms/d/e/ID/viewform?usp=header"),
+    "https://docs.google.com/forms/d/e/ID/formResponse"
+  );
+  assert.equal(formResponseUrl("https://evil.example/forms/d/e/ID/viewform"), "");
+  assert.equal(formResponseUrl("nope"), "");
+});
+
+test("buildSurveyBody sends answers plus hidden uh/variant, skipping blanks", () => {
+  const body = buildSurveyBody(
+    { uh: "entry.9", variant: "entry.8" },
+    { uh: "u1", variant: "B" },
+    { "entry.1": "4", "entry.2": "  ", "not-an-entry": "x" }
+  );
+  assert.deepEqual(Object.fromEntries(body), { "entry.1": "4", "entry.9": "u1", "entry.8": "B" });
+});
+
+test("submitSurvey posts no-cors and reports network failures", async () => {
+  const calls = [];
+  const ok = await submitSurvey("https://docs.google.com/forms/d/e/ID/formResponse", new URLSearchParams("a=1"), (u, o) => {
+    calls.push([u, o]);
+    return Promise.resolve({});
+  });
+  assert.equal(ok, true);
+  assert.equal(calls[0][1].mode, "no-cors");
+  assert.equal(calls[0][1].method, "POST");
+  assert.equal(await submitSurvey("https://x/formResponse", new URLSearchParams(), () => Promise.reject(new Error("offline"))), false);
+  assert.equal(await submitSurvey("", new URLSearchParams(), () => Promise.resolve()), false);
 });

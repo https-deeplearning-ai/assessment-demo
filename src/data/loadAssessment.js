@@ -12,7 +12,7 @@
 //
 // This module does NO shuffling and NO grading — those live in later milestones.
 
-import { normalizePrefill } from "../survey.js";
+import { normalizePrefill, normalizeQuestions } from "../survey.js";
 
 const POINTS_PER_QUESTION = 1; // SPEC §5
 
@@ -115,6 +115,9 @@ export function normalizeAssessment(raw) {
     survey_url: httpUrl(raw.survey_url),
     // Optional Google Form prefill: our field name -> the form's "entry.<n>" id.
     survey_prefill: normalizePrefill(raw.survey_prefill),
+    // Optional in-page survey questions (posted to the form's formResponse);
+    // when empty the results screen falls back to embedding the form.
+    survey_questions: normalizeQuestions(raw.survey_questions),
   };
 
   const challenges = [];

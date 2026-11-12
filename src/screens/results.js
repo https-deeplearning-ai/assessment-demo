@@ -8,7 +8,14 @@ import { focusHeading, announce } from "../util/a11y.js";
 import { widgetFor } from "../questions/registry.js";
 import { grade } from "../scoring.js";
 import { startFresh } from "../session.js";
-import { buildSurveyUrl } from "../survey.js";
+import {
+  buildSurveyUrl,
+  buildSurveyBody,
+  formResponseUrl,
+  submitSurvey,
+} from "../survey.js";
+import { getItem, setItem } from "../util/storage.js";
+import { currentAttempt } from "../telemetry.js";
 
 const OUTCOME = {
   correct: { shape: "✓", label: "Correct" },
@@ -29,12 +36,15 @@ export function renderResults(root, app) {
 
   const challenges = model.challenges.filter((ch) => ch.questions.length);
   section.append(reviewNav(challenges)); // jump to any challenge's review (SPEC §3.4)
-  const survey = surveyBlock(model.meta, {
+  const surveyValues = {
     uh: app.learnerId,
     variant: app.assessment && app.assessment.variant,
     score: fmt(r.totalEarned),
     percentage: r.percentage,
-  }); // null when no survey configured
+  };
+  const survey = model.meta.survey_questions.length
+    ? inPageSurvey(model.meta, surveyValues, surveyDoneKey(app))
+    : surveyBlock(model.meta, surveyValues); // null when no survey configured
   if (survey) section.append(survey);
   for (const ch of challenges) section.append(challengeBlock(ch, r, app));
 
@@ -52,6 +62,96 @@ export function renderResults(root, app) {
   focusHeading(h1);
   // Polite: this is a route landing, not a system event, and focus already reads the h1.
   announce(`Results: ${fmt(r.totalEarned)} of ${r.totalPossible} points, ${r.percentage} percent.`);
+}
+
+// Post-assessment survey rendered in the page and posted to the Google Form, so
+// uh / variant travel as hidden values the learner never sees. One response per
+// attempt: once sent, a re-render shows the thank-you note instead.
+function surveyDoneKey(app) {
+  const attempt = currentAttempt(app.sessionKey);
+  return `assessment:survey:${app.sessionKey}:${attempt ? attempt.session_id : ""}`;
+}
+
+function inPageSurvey(meta, values, doneKey) {
+  const action = formResponseUrl(meta.survey_url);
+  if (!action) return null;
+
+  const wrap = el("aside", "results-survey");
+  wrap.setAttribute("aria-label", "Survey");
+  const thanks = () => {
+    wrap.replaceChildren(el("p", "results-survey__text", "Thanks for your feedback!"));
+  };
+  if (getItem(doneKey)) {
+    thanks();
+    return wrap;
+  }
+
+  const form = el("form", "survey");
+  form.noValidate = true;
+  form.append(el("p", "results-survey__text", "One last step — please answer this 2-minute survey."));
+
+  meta.survey_questions.forEach((q, i) => {
+    const id = `survey-q${i}`;
+    if (q.type === "scale") {
+      const fs = el("fieldset", "survey__q");
+      fs.append(el("legend", "survey__title", q.title));
+      const row = el("div", "survey__scale");
+      if (q.min_label) row.append(el("span", "survey__end", q.min_label));
+      for (let n = q.min; n <= q.max; n++) {
+        const label = el("label", "survey__opt");
+        const input = el("input");
+        input.type = "radio";
+        input.name = q.entry;
+        input.value = String(n);
+        label.append(input, el("span", null, String(n)));
+        row.append(label);
+      }
+      if (q.max_label) row.append(el("span", "survey__end", q.max_label));
+      fs.append(row);
+      form.append(fs);
+    } else {
+      const box = el("div", "survey__q");
+      const label = el("label", "survey__title", q.title);
+      label.htmlFor = id;
+      const ta = el("textarea", "survey__text");
+      ta.id = id;
+      ta.name = q.entry;
+      ta.rows = 3;
+      ta.maxLength = 2000;
+      box.append(label, ta);
+      form.append(box);
+    }
+  });
+
+  const status = el("p", "survey__status");
+  status.setAttribute("role", "status");
+  const submit = el("button", "dl-btn dl-btn--primary", "Submit survey");
+  submit.type = "submit";
+  form.append(submit, status);
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const answers = {};
+    for (const [k, v] of new FormData(form).entries()) answers[k] = v;
+    if (!Object.values(answers).some((v) => String(v).trim())) {
+      status.textContent = "Please answer at least one question.";
+      return;
+    }
+    submit.disabled = true;
+    status.textContent = "Sending…";
+    const ok = await submitSurvey(action, buildSurveyBody(meta.survey_prefill, values, answers));
+    if (ok) {
+      setItem(doneKey, "1");
+      thanks();
+      announce("Thanks for your feedback!");
+    } else {
+      submit.disabled = false;
+      status.textContent = "Couldn't send. Please check your connection and try again.";
+    }
+  });
+
+  wrap.append(form);
+  return wrap;
 }
 
 // Post-assessment survey, embedded (Google Form, prefilled with the learner id +
