@@ -2,6 +2,13 @@
   "capability_name": "Spec-Driven Development with Agentic Coding",
   "survey_url": "https://docs.google.com/forms/d/e/1FAIpQLSdFUrb9EdU3CVbv5DtY8zpEl7u0ftDMj_uyNXS0PIWI2uhMyA/viewform",
   "survey_prefill": { "uh": "entry.629826937", "variant": "entry.1261750357" },
+  "survey_questions": [
+    {"entry": "entry.1533954358", "type": "scale", "title": "How would you rate the difficulty of the assessment?", "min": 1, "max": 5, "min_label": "Too easy", "max_label": "Too hard"},
+    {"entry": "entry.1116215102", "type": "scale", "title": "How would you rate the length of the assessment?", "min": 1, "max": 5, "min_label": "Too short", "max_label": "Too long"},
+    {"entry": "entry.1166678138", "type": "scale", "title": "How confident are you that passing this assessment shows you’ve mastered the material?", "min": 1, "max": 5, "min_label": "Not at all", "max_label": "Very confident"},
+    {"entry": "entry.34512584", "type": "scale", "title": "How likely would you be to subscribe to a PRO membership to earn a Certificate of Completion if this assessment was offered?", "min": 1, "max": 5, "min_label": "Very unlikely", "max_label": "Very likely"},
+    {"entry": "entry.508072925", "type": "paragraph", "title": "What would make this assessment more valuable to you?"}
+  ],
   "status": "draft",
   "audience": "Beginners to spec-driven and agentic coding workflows",
   "estimated_duration": "25-30 minutes",
